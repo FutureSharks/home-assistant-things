@@ -39,14 +39,28 @@ blueprint:
 
     check_interval:
       name: Check Interval (minutes)
-      description: How often (in minutes) the automation re-evaluates air quality and updates the light.
-      default: 2
+      description: >
+        How often (in minutes) the automation re-evaluates air quality and updates
+        the light. Use the /N format, e.g. /2 for every 2 minutes, /5 for every
+        5 minutes.
+      default: /2
       selector:
-        number:
-          min: 1
-          max: 60
-          unit_of_measurement: min
-          mode: box
+        select:
+          options:
+            - label: Every 1 minute
+              value: /1
+            - label: Every 2 minutes
+              value: /2
+            - label: Every 5 minutes
+              value: /5
+            - label: Every 10 minutes
+              value: /10
+            - label: Every 15 minutes
+              value: /15
+            - label: Every 30 minutes
+              value: /30
+            - label: Every 60 minutes
+              value: /60
 
     co2_low_threshold:
       name: CO₂ Low Threshold (ppm)
@@ -79,7 +93,7 @@ blueprint:
       description: >
         VOC index at which the blue channel starts increasing. Below this value
         the blue channel stays off.
-      default: 300
+      default: 400
       selector:
         number:
           min: 0
@@ -92,7 +106,7 @@ blueprint:
       description: >
         VOC index at which the blue channel reaches full intensity. Values above
         this are clamped to maximum blue.
-      default: 400
+      default: 500
       selector:
         number:
           min: 0
@@ -105,7 +119,7 @@ blueprint:
       description: >
         NOx index at which the green channel starts increasing. Below this value
         the green channel stays off.
-      default: 300
+      default: 250
       selector:
         number:
           min: 0
@@ -118,7 +132,7 @@ blueprint:
       description: >
         NOx index at which the green channel reaches full intensity. Values above
         this are clamped to maximum green.
-      default: 450
+      default: 400
       selector:
         number:
           min: 0
