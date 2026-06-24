@@ -1,0 +1,173 @@
+blueprint:
+  name: RGB Air Quality Monitor
+  description: >
+    Periodically reads CO₂, VOC, and NOx sensors and maps each pollutant level
+    onto a colour channel of an RGB LED light. CO₂ drives red, VOC drives blue,
+    and NOx drives green. The overall brightness is set to the worst (highest)
+    of the three scaled values, so a clean room stays dim and a polluted room
+    glows brightly in the dominant colour of the offending gas.
+  domain: automation
+  author: max.williams
+  input:
+    rgb_light:
+      name: RGB Light
+      description: The RGB LED entity whose colour will reflect air quality.
+      selector:
+        entity:
+          domain: light
+
+    co2_sensor:
+      name: CO₂ Sensor
+      description: Sensor reporting the current CO₂ concentration (ppm).
+      selector:
+        entity:
+          domain: sensor
+
+    voc_sensor:
+      name: VOC Index Sensor
+      description: Sensor reporting the current VOC index value.
+      selector:
+        entity:
+          domain: sensor
+
+    nox_sensor:
+      name: NOx Index Sensor
+      description: Sensor reporting the current NOx index value.
+      selector:
+        entity:
+          domain: sensor
+
+    check_interval:
+      name: Check Interval (minutes)
+      description: How often (in minutes) the automation re-evaluates air quality and updates the light.
+      default: 2
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: min
+          mode: box
+
+    co2_low_threshold:
+      name: CO₂ Low Threshold (ppm)
+      description: >
+        CO₂ level at which the red channel starts increasing. Below this value
+        the red channel stays off.
+      default: 1000
+      selector:
+        number:
+          min: 400
+          max: 5000
+          unit_of_measurement: ppm
+          mode: box
+
+    co2_high_threshold:
+      name: CO₂ High Threshold (ppm)
+      description: >
+        CO₂ level at which the red channel reaches full intensity. Values above
+        this are clamped to maximum red.
+      default: 3000
+      selector:
+        number:
+          min: 400
+          max: 10000
+          unit_of_measurement: ppm
+          mode: box
+
+    voc_low_threshold:
+      name: VOC Low Threshold (index)
+      description: >
+        VOC index at which the blue channel starts increasing. Below this value
+        the blue channel stays off.
+      default: 300
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: index
+          mode: box
+
+    voc_high_threshold:
+      name: VOC High Threshold (index)
+      description: >
+        VOC index at which the blue channel reaches full intensity. Values above
+        this are clamped to maximum blue.
+      default: 400
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: index
+          mode: box
+
+    nox_low_threshold:
+      name: NOx Low Threshold (index)
+      description: >
+        NOx index at which the green channel starts increasing. Below this value
+        the green channel stays off.
+      default: 300
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: index
+          mode: box
+
+    nox_high_threshold:
+      name: NOx High Threshold (index)
+      description: >
+        NOx index at which the green channel reaches full intensity. Values above
+        this are clamped to maximum green.
+      default: 450
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: index
+          mode: box
+
+mode: single
+
+triggers:
+  - trigger: time_pattern
+    minutes: !input check_interval
+    id: periodic_check
+
+actions:
+  - variables:
+      _co2_sensor: !input co2_sensor
+      _voc_sensor: !input voc_sensor
+      _nox_sensor: !input nox_sensor
+      _co2_low: !input co2_low_threshold
+      _co2_high: !input co2_high_threshold
+      _voc_low: !input voc_low_threshold
+      _voc_high: !input voc_high_threshold
+      _nox_low: !input nox_low_threshold
+      _nox_high: !input nox_high_threshold
+
+      co2_value: "{{ states(_co2_sensor) | int(0) }}"
+      co2_scale: "{{ [co2_value - _co2_low, 0] | max / (_co2_high - _co2_low) }}"
+      co2_brightness: "{{ [(co2_scale * 100) + 1, 100] | min }}"
+
+      voc_value: "{{ states(_voc_sensor) | int(0) }}"
+      voc_scale: "{{ [voc_value - _voc_low, 0] | max / (_voc_high - _voc_low) }}"
+      voc_brightness: "{{ [(voc_scale * 100) + 1, 100] | min }}"
+
+      nox_value: "{{ states(_nox_sensor) | int(0) }}"
+      nox_scale: "{{ [nox_value - _nox_low, 0] | max / (_nox_high - _nox_low) }}"
+      nox_brightness: "{{ [(nox_scale * 100) + 1, 100] | min }}"
+
+      red_value: "{{ [co2_scale * 255, 255] | min | int }}"
+      blue_value: "{{ [voc_scale * 255, 255] | min | int }}"
+      green_value: "{{ [nox_scale * 255, 255] | min | int }}"
+      rgb_led_brightness_pct: "{{ [co2_brightness, voc_brightness, nox_brightness] | max }}"
+
+  - action: light.turn_on
+    target:
+      entity_id: !input rgb_light
+    data:
+      rgb_color:
+        - "{{ red_value }}"
+        - "{{ green_value }}"
+        - "{{ blue_value }}"
+      brightness_pct: "{{ rgb_led_brightness_pct }}"

@@ -1,0 +1,259 @@
+blueprint:
+  name: Dynamic Lux-Based Light Control
+  description: >
+    Automatically turns a light on or off based on a presence sensor, and
+    continuously adjusts its brightness to maintain a target lux level measured
+    by an ambient light sensor. The target lux can be scaled per hour of the day
+    to account for changing natural light or desired ambiance.
+  domain: automation
+  author: max.williams
+  input:
+    light_target:
+      name: Light
+      description: The light entity to control.
+      selector:
+        entity:
+          domain: light
+
+    presence_sensor:
+      name: Presence Sensor(s)
+      description: >
+        One or more binary sensors that trigger the light on/off.
+        The light turns on when any sensor becomes active and turns off
+        only when all sensors are inactive.
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: occupancy
+          multiple: true
+
+    light_sensor:
+      name: Ambient Light Sensor
+      description: Sensor reporting the current lux level in the room.
+      selector:
+        entity:
+          domain: sensor
+          device_class: illuminance
+
+    target_lux:
+      name: Target Lux
+      description: The desired illuminance level (lux) to maintain when the light is on.
+      default: 140
+      selector:
+        number:
+          min: 1
+          max: 2000
+          unit_of_measurement: lx
+          mode: box
+
+    max_brightness:
+      name: Maximum Brightness
+      description: The upper brightness limit (%) the light will ever be set to.
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+
+    presence_timeout:
+      name: Presence Timeout
+      description: >
+        How long to wait after all presence sensors become inactive before
+        turning the light off. Set to 0 to turn off immediately.
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+          mode: box
+
+    max_lux_output:
+      name: Max Lux Output
+      description: >
+        The lux value the light produces at 100 % brightness. Used to convert
+        a lux deficit into a brightness percentage adjustment.
+      default: 255
+      selector:
+        number:
+          min: 1
+          max: 5000
+          unit_of_measurement: lx
+          mode: box
+
+    default_lux_adjustment:
+      name: Default Lux Adjustment
+      description: >
+        The lux target scaling (%) applied to all hours that are not listed in
+        the per-hour overrides below. 100 % means the full target lux is used;
+        lower values dim the target for that hour.
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+
+    hour_00: { name: "Lux % – 00:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_01: { name: "Lux % – 01:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_02: { name: "Lux % – 02:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_03: { name: "Lux % – 03:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_04: { name: "Lux % – 04:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_05: { name: "Lux % – 05:00 (override)", default: 40, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_06: { name: "Lux % – 06:00 (override)", default: 80, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_07: { name: "Lux % – 07:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_08: { name: "Lux % – 08:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_09: { name: "Lux % – 09:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_10: { name: "Lux % – 10:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_11: { name: "Lux % – 11:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_12: { name: "Lux % – 12:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_13: { name: "Lux % – 13:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_14: { name: "Lux % – 14:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_15: { name: "Lux % – 15:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_16: { name: "Lux % – 16:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_17: { name: "Lux % – 17:00 (override)", default: 100, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_18: { name: "Lux % – 18:00 (override)", default: 90, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_19: { name: "Lux % – 19:00 (override)", default: 70, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_20: { name: "Lux % – 20:00 (override)", default: 40, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_21: { name: "Lux % – 21:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_22: { name: "Lux % – 22:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+    hour_23: { name: "Lux % – 23:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
+
+mode: queued
+max: 4
+
+triggers:
+  - trigger: state
+    entity_id: !input presence_sensor
+    to: "on"
+    id: presence
+  - trigger: state
+    entity_id: !input presence_sensor
+    to: "off"
+    id: no_presence
+  - trigger: time_pattern
+    minutes: /1
+    id: periodic_check
+
+actions:
+  - variables:
+      _light_target: !input light_target
+      _light_sensor: !input light_sensor
+      _presence_sensors: !input presence_sensor
+      _presence_timeout: !input presence_timeout
+      _target_lux: !input target_lux
+      _max_brightness: !input max_brightness
+      _max_lux_output: !input max_lux_output
+      _default_lux_adjustment: !input default_lux_adjustment
+      # Build the per-hour adjustment map from individual inputs
+      _hour_map:
+        "0":  !input hour_00
+        "1":  !input hour_01
+        "2":  !input hour_02
+        "3":  !input hour_03
+        "4":  !input hour_04
+        "5":  !input hour_05
+        "6":  !input hour_06
+        "7":  !input hour_07
+        "8":  !input hour_08
+        "9":  !input hour_09
+        "10": !input hour_10
+        "11": !input hour_11
+        "12": !input hour_12
+        "13": !input hour_13
+        "14": !input hour_14
+        "15": !input hour_15
+        "16": !input hour_16
+        "17": !input hour_17
+        "18": !input hour_18
+        "19": !input hour_19
+        "20": !input hour_20
+        "21": !input hour_21
+        "22": !input hour_22
+        "23": !input hour_23
+      # Derived values
+      lux_adjustment: >
+        {% set current_hour = now().hour | string %}
+        {{ _hour_map.get(current_hour, _default_lux_adjustment) }}
+      adjusted_target_lux: "{{ _target_lux * (lux_adjustment / 100) }}"
+      current_lux: "{{ states(_light_sensor) | float(0) }}"
+      max_lux_output_adjusted: "{{ _max_lux_output * (_max_brightness / 100) }}"
+      lux_deficit: "{{ adjusted_target_lux - current_lux }}"
+      brightness_adjustment: "{{ (lux_deficit / max_lux_output_adjusted) * 100 }}"
+      current_brightness: >
+        {{ (state_attr(_light_target, 'brightness') | float(0) / 255) * 100 }}
+      new_brightness: "{{ current_brightness + brightness_adjustment }}"
+      brightness: "{{ [0, [_max_brightness, new_brightness] | min] | max | float }}"
+
+  - choose:
+      # Presence detected → turn light on at calculated brightness
+      - conditions:
+          - condition: trigger
+            id: presence
+          - condition: template
+            value_template: "{{ brightness > 1.0 }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: "{{ _light_target }}"
+            data:
+              brightness_pct: "{{ brightness }}"
+
+      # Presence gone → wait for timeout, then turn off if still no presence
+      - conditions:
+          - condition: trigger
+            id: no_presence
+          - condition: template
+            value_template: >
+              {{ states(_light_target) == 'on' and
+                 _presence_sensors | map('states') | select('eq', 'on') | list | count == 0 }}
+        sequence:
+          # Wait for the timeout, but abort early if any sensor becomes active again
+          - wait_for_trigger:
+              - trigger: state
+                entity_id: !input presence_sensor
+                to: "on"
+            timeout:
+              seconds: "{{ _presence_timeout }}"
+            continue_on_timeout: true
+          # Only turn off if no sensor came back on during the wait
+          - condition: template
+            value_template: >
+              {{ wait.trigger is none and
+                 _presence_sensors | map('states') | select('eq', 'on') | list | count == 0 }}
+          - action: light.turn_off
+            target:
+              entity_id: "{{ _light_target }}"
+
+      # Periodic check while light is on → adjust brightness or turn off if too dim
+      - conditions:
+          - condition: trigger
+            id: periodic_check
+          - condition: template
+            value_template: >
+              {{ _presence_sensors | map('states') | select('eq', 'on') | list | count > 0 }}
+        sequence:
+          - choose:
+              # Calculated brightness is negligible → turn off
+              - conditions:
+                  - condition: template
+                    value_template: "{{ brightness < 1.0 }}"
+                  - condition: template
+                    value_template: "{{ states(_light_target) == 'on' }}"
+                sequence:
+                  - action: light.turn_off
+                    target:
+                      entity_id: "{{ _light_target }}"
+              # Adjustment is significant (>5 %) → re-apply brightness
+              - conditions:
+                  - condition: template
+                    value_template: "{{ brightness_adjustment | abs > 5.0 }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ _light_target }}"
+                    data:
+                      brightness_pct: "{{ brightness }}"

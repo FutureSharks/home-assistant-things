@@ -1,0 +1,186 @@
+# ===================================================================
+# Button mapping:
+#   Button 1 single press  → power on
+#   Button 1 long press    → brightness up
+#   Button 1 double press  → next colour
+#   Button 2 single press  → power off
+#   Button 2 long press    → brightness down
+#   Button 2 double press  → previous colour
+# ===================================================================
+
+blueprint:
+  name: IKEA BILRESA + VARMBLIXT (Matter)
+  description: >
+    Controls an IKEA VARMBLIXT light using the IKEA BILRESA E2489 Matter
+    dual-button remote. Button 1 turns the light on (single press), increases
+    brightness (long press), or cycles to the next colour temperature (double
+    press). Button 2 turns the light off (single press), decreases brightness
+    (long press), or cycles to the previous colour temperature (double press).
+  domain: automation
+  author: max.williams
+  homeassistant:
+    min_version: 2025.12.1
+
+  input:
+    button1_event:
+      name: Button 1 – Event Entity
+      description: >
+        Select the event entity for Button 1 (for example:
+        event.bilresa_dual_button_button_1_2).
+      selector:
+        entity:
+          domain: event
+
+    button2_event:
+      name: Button 2 – Event Entity
+      description: >
+        Select the event entity for Button 2 (for example:
+        event.bilresa_dual_button_button_2_2).
+      selector:
+        entity:
+          domain: event
+
+    varmblixt_light:
+      name: VARMBLIXT Light
+      description: >
+        Select the IKEA VARMBLIXT light entity to control.
+      selector:
+        entity:
+          domain: light
+
+    brightness_step:
+      name: Brightness Step (%)
+      description: >
+        How much to increase or decrease brightness on each long press (1–100).
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+
+# ===================================================================
+# AUTOMATION LOGIC
+# ===================================================================
+
+variables:
+  light_entity: !input varmblixt_light
+  brightness_step_val: !input brightness_step
+  # Colour temperatures in Kelvin to cycle through (warm → cool)
+  colour_temps: [2200, 2700, 3000, 4000, 6500]
+
+trigger:
+  - platform: state
+    id: button1
+    entity_id: !input button1_event
+    not_from: "unavailable"
+    not_to: "unavailable"
+  - platform: state
+    id: button2
+    entity_id: !input button2_event
+    not_from: "unavailable"
+    not_to: "unavailable"
+
+condition: []
+
+action:
+  - variables:
+      press_type: "{{ trigger.to_state.attributes.event_type }}"
+      trigger_id: "{{ trigger.id }}"
+      current_kelvin: "{{ state_attr(light_entity, 'color_temp_kelvin') | int(2700) }}"
+      # Find the index of the nearest colour temp that is >= current
+      current_idx: >
+        {% set ns = namespace(idx=0) %}
+        {% for t in colour_temps %}
+          {% if t <= current_kelvin %}
+            {% set ns.idx = loop.index0 %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.idx }}
+
+  - choose:
+
+      # -------------------------------------------------------------
+      # BUTTON 1 – SINGLE PRESS → power on
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger_id == 'button1' and press_type == 'multi_press_1' }}
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input varmblixt_light
+
+      # -------------------------------------------------------------
+      # BUTTON 1 – LONG PRESS → brightness up
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger_id == 'button1' and press_type == 'long_press' }}
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input varmblixt_light
+            data:
+              brightness_step_pct: "{{ brightness_step_val | int }}"
+
+      # -------------------------------------------------------------
+      # BUTTON 1 – DOUBLE PRESS → next colour temperature
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger_id == 'button1' and press_type == 'multi_press_2' }}
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input varmblixt_light
+            data:
+              color_temp_kelvin: >
+                {{ colour_temps[(current_idx + 1) % (colour_temps | length)] }}
+
+      # -------------------------------------------------------------
+      # BUTTON 2 – SINGLE PRESS → power off
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger_id == 'button2' and press_type == 'multi_press_1' }}
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id: !input varmblixt_light
+
+      # -------------------------------------------------------------
+      # BUTTON 2 – LONG PRESS → brightness down
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger_id == 'button2' and press_type == 'long_press' }}
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input varmblixt_light
+            data:
+              brightness_step_pct: "{{ -(brightness_step_val | int) }}"
+
+      # -------------------------------------------------------------
+      # BUTTON 2 – DOUBLE PRESS → previous colour temperature
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger_id == 'button2' and press_type == 'multi_press_2' }}
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input varmblixt_light
+            data:
+              color_temp_kelvin: >
+                {{ colour_temps[(current_idx - 1) % (colour_temps | length)] }}
+
+mode: restart
