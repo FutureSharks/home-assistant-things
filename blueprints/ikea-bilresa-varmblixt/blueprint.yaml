@@ -3,22 +3,22 @@
 #   Button 1 single press  → power on
 #   Button 1 long press    → brightness up (continuously while held)
 #   Button 1 long release  → stop brightness up
-#   Button 1 double press  → next colour
+#   Button 1 double press  → next pastel colour
 #   Button 2 single press  → power off
 #   Button 2 long press    → brightness down (continuously while held)
 #   Button 2 long release  → stop brightness down
-#   Button 2 double press  → previous colour
+#   Button 2 double press  → previous pastel colour
 # ===================================================================
 
 blueprint:
   name: IKEA BILRESA + VARMBLIXT (Matter)
   description: >
-    Controls an IKEA VARMBLIXT light using the IKEA BILRESA E2489 Matter
+    Controls an IKEA VARMBLIXT RGBW light using the IKEA BILRESA E2489 Matter
     dual-button remote. Button 1 turns the light on (single press), continuously
-    increases brightness while held (long press), or cycles to the next colour
-    temperature (double press). Button 2 turns the light off (single press),
+    increases brightness while held (long press), or cycles to the next pastel
+    colour (double press). Button 2 turns the light off (single press),
     continuously decreases brightness while held (long press), or cycles to the
-    previous colour temperature (double press).
+    previous pastel colour (double press).
   domain: automation
   author: max.williams
   homeassistant:
@@ -85,8 +85,16 @@ variables:
   light_entity: !input varmblixt_light
   brightness_step_val: !input brightness_step
   repeat_delay_val: !input repeat_delay_ms
-  # Colour temperatures in Kelvin to cycle through (warm → cool)
-  colour_temps: [2200, 2700, 3000, 4000, 6500]
+  # Pastel RGB colours to cycle through
+  pastel_colours:
+    - [255, 179, 186]   # pastel pink
+    - [255, 204, 153]   # pastel peach
+    - [255, 255, 179]   # pastel yellow
+    - [179, 255, 179]   # pastel green
+    - [179, 230, 255]   # pastel sky blue
+    - [179, 196, 255]   # pastel periwinkle
+    - [220, 179, 255]   # pastel lavender
+    - [255, 179, 230]   # pastel rose
 
 trigger:
   - platform: state
@@ -106,12 +114,14 @@ action:
   - variables:
       press_type: "{{ trigger.to_state.attributes.event_type }}"
       trigger_id: "{{ trigger.id }}"
-      current_kelvin: "{{ state_attr(light_entity, 'color_temp_kelvin') | int(2700) }}"
-      # Find the index of the nearest colour temp that is >= current
+      current_rgb: "{{ state_attr(light_entity, 'rgb_color') or [255, 179, 186] }}"
+      # Find the index of the closest pastel colour by minimising squared RGB distance
       current_idx: >
-        {% set ns = namespace(idx=0) %}
-        {% for t in colour_temps %}
-          {% if t <= current_kelvin %}
+        {% set ns = namespace(idx=0, best=999999999) %}
+        {% for c in pastel_colours %}
+          {% set dist = (c[0] - current_rgb[0])**2 + (c[1] - current_rgb[1])**2 + (c[2] - current_rgb[2])**2 %}
+          {% if dist < ns.best %}
+            {% set ns.best = dist %}
             {% set ns.idx = loop.index0 %}
           {% endif %}
         {% endfor %}
@@ -160,7 +170,7 @@ action:
         sequence: []
 
       # -------------------------------------------------------------
-      # BUTTON 1 – DOUBLE PRESS → next colour temperature
+      # BUTTON 1 – DOUBLE PRESS → next pastel colour
       # -------------------------------------------------------------
       - conditions:
           - condition: template
@@ -171,8 +181,8 @@ action:
             target:
               entity_id: !input varmblixt_light
             data:
-              color_temp_kelvin: >
-                {{ colour_temps[(current_idx + 1) % (colour_temps | length)] }}
+              rgb_color: >
+                {{ pastel_colours[(current_idx + 1) % (pastel_colours | length)] }}
 
       # -------------------------------------------------------------
       # BUTTON 2 – SINGLE PRESS → power off
@@ -215,7 +225,7 @@ action:
         sequence: []
 
       # -------------------------------------------------------------
-      # BUTTON 2 – DOUBLE PRESS → previous colour temperature
+      # BUTTON 2 – DOUBLE PRESS → previous pastel colour
       # -------------------------------------------------------------
       - conditions:
           - condition: template
@@ -226,7 +236,7 @@ action:
             target:
               entity_id: !input varmblixt_light
             data:
-              color_temp_kelvin: >
-                {{ colour_temps[(current_idx - 1) % (colour_temps | length)] }}
+              rgb_color: >
+                {{ pastel_colours[(current_idx - 1) % (pastel_colours | length)] }}
 
 mode: restart
