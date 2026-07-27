@@ -87,14 +87,30 @@ variables:
   repeat_delay_val: !input repeat_delay_ms
   # Pastel RGB colours to cycle through
   pastel_colours:
-    - [255, 179, 186]   # pastel pink
-    - [255, 204, 153]   # pastel peach
-    - [255, 255, 179]   # pastel yellow
-    - [179, 255, 179]   # pastel green
-    - [179, 230, 255]   # pastel sky blue
-    - [179, 196, 255]   # pastel periwinkle
-    - [220, 179, 255]   # pastel lavender
-    - [255, 179, 230]   # pastel rose
+    - hs_color: [22, 80]
+      color_temp_kelvin: none
+    - hs_color: [10, 90]
+      color_temp_kelvin: none
+    - hs_color: [350, 20]
+      color_temp_kelvin: none
+    - hs_color: [300, 22]
+      color_temp_kelvin: none
+    - hs_color: [220, 26]
+      color_temp_kelvin: none
+    - hs_color: [160, 20]
+      color_temp_kelvin: none
+    - hs_color: [80, 35]
+      color_temp_kelvin: none
+    - hs_color: [40, 70]
+      color_temp_kelvin: none
+    - hs_color: none
+      color_temp_kelvin: 6500
+    - hs_color: none
+      color_temp_kelvin: 4000
+    - hs_color: none
+      color_temp_kelvin: 3000
+    - hs_color: none
+      color_temp_kelvin: 2000
 
 trigger:
   - platform: state
@@ -114,18 +130,35 @@ action:
   - variables:
       press_type: "{{ trigger.to_state.attributes.event_type }}"
       trigger_id: "{{ trigger.id }}"
-      current_rgb: "{{ state_attr(light_entity, 'rgb_color') or [255, 179, 186] }}"
-      # Find the index of the closest pastel colour by minimising squared RGB distance
+      current_hs_color: "{{ state_attr(light_entity, 'hs_color') }}"
+      current_color_temp_kelvin: "{{ state_attr(light_entity, 'color_temp_kelvin') }}"
+      # Find the index of the closest pastel colour, comparing hs_color entries
+      # against the light's current hs_color and color_temp_kelvin entries
+      # against its current color_temp_kelvin.
       current_idx: >
         {% set ns = namespace(idx=0, best=999999999) %}
         {% for c in pastel_colours %}
-          {% set dist = (c[0] - current_rgb[0])**2 + (c[1] - current_rgb[1])**2 + (c[2] - current_rgb[2])**2 %}
+          {% if c.hs_color != 'none' and current_hs_color is not none %}
+            {% set dist = (c.hs_color[0] - current_hs_color[0])**2 + (c.hs_color[1] - current_hs_color[1])**2 %}
+          {% elif c.color_temp_kelvin != 'none' and current_color_temp_kelvin is not none %}
+            {% set dist = (c.color_temp_kelvin - current_color_temp_kelvin)**2 %}
+          {% else %}
+            {% set dist = 999999999 %}
+          {% endif %}
           {% if dist < ns.best %}
             {% set ns.best = dist %}
             {% set ns.idx = loop.index0 %}
           {% endif %}
         {% endfor %}
         {{ ns.idx }}
+      # The data to send to light.turn_on for the next/previous pastel colour,
+      # picking whichever field (hs_color or color_temp_kelvin) is actually set.
+      next_colour_data: >
+        {% set c = pastel_colours[(current_idx + 1) % (pastel_colours | length)] %}
+        {{ {'hs_color': c.hs_color} if c.hs_color != 'none' else {'color_temp_kelvin': c.color_temp_kelvin} }}
+      prev_colour_data: >
+        {% set c = pastel_colours[(current_idx - 1) % (pastel_colours | length)] %}
+        {{ {'hs_color': c.hs_color} if c.hs_color != 'none' else {'color_temp_kelvin': c.color_temp_kelvin} }}
 
   - choose:
 
@@ -180,9 +213,7 @@ action:
           - action: light.turn_on
             target:
               entity_id: !input varmblixt_light
-            data:
-              rgb_color: >
-                {{ pastel_colours[(current_idx + 1) % (pastel_colours | length)] }}
+            data: "{{ next_colour_data }}"
 
       # -------------------------------------------------------------
       # BUTTON 2 – SINGLE PRESS → power off
@@ -235,8 +266,6 @@ action:
           - action: light.turn_on
             target:
               entity_id: !input varmblixt_light
-            data:
-              rgb_color: >
-                {{ pastel_colours[(current_idx - 1) % (pastel_colours | length)] }}
+            data: "{{ prev_colour_data }}"
 
 mode: restart

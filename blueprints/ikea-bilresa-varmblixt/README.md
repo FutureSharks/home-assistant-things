@@ -1,6 +1,6 @@
 # ikea-bilresa-varmblixt
 
-This blueprint is for the Ikea Bilresa remote and Varmblixt matter over thread devices. It allows the Bilresa to control the Varmblixt as follows:
+This blueprint is for the Ikea Bilresa remote and Varmblixt light matter-over-thread devices. It allows the Bilresa to control the Varmblixt as follows:
 
 - Button 1 press: power on
 - Button 1 long press: brightness up continuously while held, stops on release
@@ -8,6 +8,8 @@ This blueprint is for the Ikea Bilresa remote and Varmblixt matter over thread d
 - Button 2 press: power off
 - Button 2 long press: brightness down continuously while held, stops on release
 - Button 2 double press: previous colour
+
+The colours have been set to approximate the 12 colours from the [Sabine Marcelis](https://www.instagram.com/sabine_marcelis/?hl=en) version of the Varmblixt.
 
 ## Configuration
 
