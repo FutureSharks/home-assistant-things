@@ -1,0 +1,152 @@
+blueprint:
+  name: Presence Activiated Circadian Pastel Light
+  description: >
+    Turns an RGB light on when a motion (binary) sensor detects presence and off
+    when motion clears. While on, the light cycles through 12 pastel colours that
+    track the time of day between 05:00 and 20:00: it starts on a warm peach in the
+    early morning, cools towards pastel cyan and blue around midday, and warms back
+    to a soft rose by the end of the day. The colour is refreshed both when motion
+    is detected and periodically, so a light left on during a long presence still
+    follows the daily colour arc.
+  domain: automation
+  author: max.williams
+  input:
+    motion_sensor:
+      name: Motion Sensor
+      description: The binary sensor used to detect motion / presence.
+      selector:
+        entity:
+          domain: binary_sensor
+
+    rgb_light:
+      name: RGB Light
+      description: The RGB light entity to control.
+      selector:
+        entity:
+          domain: light
+
+    brightness_pct:
+      name: Brightness (%)
+      description: Brightness the light is turned on at.
+      default: 80
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+
+    no_motion_wait:
+      name: No Motion Wait (minutes)
+      description: How long to wait after motion clears before turning the light off.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: minutes
+          mode: box
+
+    refresh_interval:
+      name: Colour Refresh Interval (minutes)
+      description: >
+        How often the colour is re-evaluated while the light is on, so it keeps
+        tracking the time of day. Use the /N format, e.g. /5 for every 5 minutes.
+      default: /5
+      selector:
+        select:
+          options:
+            - label: Every 1 minute
+              value: /1
+            - label: Every 2 minutes
+              value: /2
+            - label: Every 5 minutes
+              value: /5
+            - label: Every 10 minutes
+              value: /10
+            - label: Every 15 minutes
+              value: /15
+            - label: Every 30 minutes
+              value: /30
+
+mode: queue
+max: 3
+
+triggers:
+  - trigger: state
+    entity_id: !input motion_sensor
+    to: "on"
+    id: motion_on
+  - trigger: state
+    entity_id: !input motion_sensor
+    to: "off"
+    id: motion_off
+  - trigger: time_pattern
+    minutes: !input refresh_interval
+    id: refresh
+
+variables:
+  _motion_sensor: !input motion_sensor
+  _rgb_light: !input rgb_light
+  _brightness_pct: !input brightness_pct
+
+  # Day window and palette definition.
+  day_start_min: 300      # 05:00
+  day_end_min: 1200       # 20:00
+  # 12 pastel colours: warm -> cool -> warm.
+  palette:
+    - [255, 200, 170]     # warm peach
+    - [255, 215, 175]     # apricot
+    - [255, 240, 180]     # pastel yellow
+    - [220, 240, 180]     # pastel lime
+    - [190, 235, 195]     # pastel green
+    - [185, 235, 220]     # pastel mint
+    - [180, 225, 235]     # pastel cyan (coolest)
+    - [185, 215, 240]     # pastel sky blue
+    - [200, 205, 240]     # periwinkle
+    - [215, 200, 235]     # lavender
+    - [240, 200, 220]     # pastel pink
+    - [250, 195, 190]     # warm rose
+
+  now_min: "{{ now().hour * 60 + now().minute }}"
+  # Clamp into the day window, then map onto 12 palette slots.
+  clamped_min: "{{ [[now_min, day_start_min] | max, day_end_min] | min }}"
+  slot_size: "{{ (day_end_min - day_start_min) / 12 }}"
+  colour_index: "{{ [((clamped_min - day_start_min) / slot_size) | int, 11] | min }}"
+  rgb_colour: "{{ palette[colour_index] }}"
+
+actions:
+  - choose:
+      # Motion cleared: wait the configured delay, then turn the light off.
+      - conditions:
+          - condition: trigger
+            id: motion_off
+        sequence:
+          - delay:
+              minutes: !input no_motion_wait
+          - action: light.turn_off
+            target:
+              entity_id: !input rgb_light
+
+      # Periodic refresh: only update colour if the light is already on.
+      - conditions:
+          - condition: trigger
+            id: refresh
+          - condition: state
+            entity_id: !input rgb_light
+            state: "on"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input rgb_light
+            data:
+              rgb_color: "{{ rgb_colour }}"
+
+    # Motion detected: turn the light on with the current pastel colour.
+    default:
+      - action: light.turn_on
+        target:
+          entity_id: !input rgb_light
+        data:
+          rgb_color: "{{ rgb_colour }}"
+          brightness_pct: "{{ _brightness_pct }}"

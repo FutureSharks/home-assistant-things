@@ -1,4 +1,4 @@
-# dynamic-light
+# Presence Activated Target Lux Adjusted Light
 
 Automatically controls a dimmable light:
 
@@ -6,5 +6,3 @@ Automatically controls a dimmable light:
 - Adjusts the light brightness periodically based on:
  - A target lux that varies depending on the hour
  - A lux sensor
-- Pauses automation until if any button on a remote is pressed:
-  - Resumes automation when no presence is detected

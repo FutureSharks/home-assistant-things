@@ -1,5 +1,5 @@
 blueprint:
-  name: Dynamic Lux-Based Light Control
+  name: Presence Activated Target Lux Adjusted Light
   description: >
     Automatically turns a light on or off based on a presence sensor, and
     continuously adjusts its brightness to maintain a target lux level measured
