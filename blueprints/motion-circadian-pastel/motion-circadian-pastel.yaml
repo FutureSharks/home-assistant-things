@@ -69,7 +69,7 @@ blueprint:
             - label: Every 30 minutes
               value: /30
 
-mode: queue
+mode: queued
 max: 3
 
 triggers:

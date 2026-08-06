@@ -11,6 +11,8 @@ This blueprint is for the Ikea Bilresa remote and Varmblixt light matter-over-th
 
 The colours have been set to approximate the 12 colours from the [Sabine Marcelis](https://www.instagram.com/sabine_marcelis/?hl=en) version of the Varmblixt.
 
+Import URL: https://raw.githubusercontent.com/FutureSharks/home-assistant-things/refs/heads/main/blueprints/ikea-bilresa-varmblixt/ikea-bilresa-varmblixt.yaml
+
 ## Configuration
 
 | Input | Description | Default |
