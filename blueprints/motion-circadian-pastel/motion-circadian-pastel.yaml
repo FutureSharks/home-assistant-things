@@ -1,13 +1,13 @@
 blueprint:
   name: Presence Activiated Circadian Pastel Light
   description: >
-    Turns an RGB light on when a motion (binary) sensor detects presence and off
-    when motion clears. While on, the light cycles through 12 pastel colours that
-    track the time of day between 05:00 and 20:00: it starts on a warm peach in the
-    early morning, cools towards pastel cyan and blue around midday, and warms back
-    to a soft rose by the end of the day. The colour is refreshed both when motion
-    is detected and periodically, so a light left on during a long presence still
-    follows the daily colour arc.
+    Turns a light on when a motion (binary) sensor detects presence and off
+    when motion clears. While on, the light cycles through 12 pastel colours and
+    warm whites that track the time of day between 05:00 and 20:00, moving through
+    the palette from warm pastel hues in the early morning to cool whites by the
+    end of the day. The colour is refreshed both when motion is detected and
+    periodically, so a light left on during a long presence still follows the
+    daily colour arc.
   domain: automation
   author: max.williams
   input:
@@ -93,27 +93,42 @@ variables:
   # Day window and palette definition.
   day_start_min: 300      # 05:00
   day_end_min: 1200       # 20:00
-  # 12 pastel colours: warm -> cool -> warm.
+  # Pastel colours to cycle through over the course of the day.
   palette:
-    - [255, 200, 170]     # warm peach
-    - [255, 215, 175]     # apricot
-    - [255, 240, 180]     # pastel yellow
-    - [220, 240, 180]     # pastel lime
-    - [190, 235, 195]     # pastel green
-    - [185, 235, 220]     # pastel mint
-    - [180, 225, 235]     # pastel cyan (coolest)
-    - [185, 215, 240]     # pastel sky blue
-    - [200, 205, 240]     # periwinkle
-    - [215, 200, 235]     # lavender
-    - [240, 200, 220]     # pastel pink
-    - [250, 195, 190]     # warm rose
+    - hs_color: [22, 80]
+      color_temp_kelvin: none
+    - hs_color: [10, 90]
+      color_temp_kelvin: none
+    - hs_color: [350, 20]
+      color_temp_kelvin: none
+    - hs_color: [300, 22]
+      color_temp_kelvin: none
+    - hs_color: [220, 26]
+      color_temp_kelvin: none
+    - hs_color: [160, 20]
+      color_temp_kelvin: none
+    - hs_color: [80, 35]
+      color_temp_kelvin: none
+    - hs_color: [40, 70]
+      color_temp_kelvin: none
+    - hs_color: none
+      color_temp_kelvin: 6500
+    - hs_color: none
+      color_temp_kelvin: 4000
+    - hs_color: none
+      color_temp_kelvin: 3000
+    - hs_color: none
+      color_temp_kelvin: 2000
 
   now_min: "{{ now().hour * 60 + now().minute }}"
-  # Clamp into the day window, then map onto 12 palette slots.
+  # Clamp into the day window, then map onto the palette slots.
   clamped_min: "{{ [[now_min, day_start_min] | max, day_end_min] | min }}"
-  slot_size: "{{ (day_end_min - day_start_min) / 12 }}"
-  colour_index: "{{ [((clamped_min - day_start_min) / slot_size) | int, 11] | min }}"
-  rgb_colour: "{{ palette[colour_index] }}"
+  slot_size: "{{ (day_end_min - day_start_min) / (palette | length) }}"
+  colour_index: "{{ [((clamped_min - day_start_min) / slot_size) | int, (palette | length) - 1] | min }}"
+  current_colour: "{{ palette[colour_index] }}"
+  # The data to send to light.turn_on, picking whichever field is actually set.
+  colour_data: >
+    {{ {'hs_color': current_colour.hs_color} if current_colour.hs_color != 'none' else {'color_temp_kelvin': current_colour.color_temp_kelvin} }}
 
 actions:
   - choose:
@@ -139,14 +154,11 @@ actions:
           - action: light.turn_on
             target:
               entity_id: !input rgb_light
-            data:
-              rgb_color: "{{ rgb_colour }}"
+            data: "{{ colour_data }}"
 
     # Motion detected: turn the light on with the current pastel colour.
     default:
       - action: light.turn_on
         target:
           entity_id: !input rgb_light
-        data:
-          rgb_color: "{{ rgb_colour }}"
-          brightness_pct: "{{ _brightness_pct }}"
+        data: "{{ dict(colour_data, brightness_pct=_brightness_pct) }}"
