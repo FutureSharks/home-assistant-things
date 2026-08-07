@@ -46,28 +46,17 @@ blueprint:
           unit_of_measurement: lx
           mode: box
 
-    max_brightness:
-      name: Maximum Brightness
-      description: The upper brightness limit (%) the light will ever be set to.
-      default: 100
-      selector:
-        number:
-          min: 1
-          max: 100
-          unit_of_measurement: "%"
-          mode: slider
-
     presence_timeout:
       name: Presence Timeout
       description: >
         How long to wait after all presence sensors become inactive before
         turning the light off. Set to 0 to turn off immediately.
-      default: 60
+      default: 1
       selector:
         number:
           min: 0
-          max: 3600
-          unit_of_measurement: seconds
+          max: 60
+          unit_of_measurement: minutes
           mode: box
 
     max_lux_output:
@@ -145,7 +134,6 @@ actions:
       _presence_sensors: !input presence_sensor
       _presence_timeout: !input presence_timeout
       _target_lux: !input target_lux
-      _max_brightness: !input max_brightness
       _max_lux_output: !input max_lux_output
       _default_lux_adjustment: !input default_lux_adjustment
       # Build the per-hour adjustment map from individual inputs
@@ -180,13 +168,12 @@ actions:
         {{ _hour_map.get(current_hour, _default_lux_adjustment) }}
       adjusted_target_lux: "{{ _target_lux * (lux_adjustment / 100) }}"
       current_lux: "{{ states(_light_sensor) | float(0) }}"
-      max_lux_output_adjusted: "{{ _max_lux_output * (_max_brightness / 100) }}"
       lux_deficit: "{{ adjusted_target_lux - current_lux }}"
-      brightness_adjustment: "{{ (lux_deficit / max_lux_output_adjusted) * 100 }}"
+      brightness_adjustment: "{{ (lux_deficit / _max_lux_output) * 100 }}"
       current_brightness: >
         {{ (state_attr(_light_target, 'brightness') | float(0) / 255) * 100 }}
       new_brightness: "{{ current_brightness + brightness_adjustment }}"
-      brightness: "{{ [0, [_max_brightness, new_brightness] | min] | max | float }}"
+      brightness: "{{ [0, [100, new_brightness] | min] | max | float }}"
 
   - choose:
       # Presence detected → turn light on at calculated brightness
@@ -217,7 +204,7 @@ actions:
                 entity_id: !input presence_sensor
                 to: "on"
             timeout:
-              seconds: "{{ _presence_timeout }}"
+              seconds: "{{ _presence_timeout * 60 }}"
             continue_on_timeout: true
           # Only turn off if no sensor came back on during the wait
           - condition: template
