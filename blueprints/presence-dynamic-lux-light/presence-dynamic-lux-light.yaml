@@ -78,7 +78,7 @@ blueprint:
         The lux target scaling (%) applied to all hours that are not listed in
         the per-hour overrides below. 100 % means the full target lux is used;
         lower values dim the target for that hour.
-      default: 100
+      default: 15
       selector:
         number:
           min: 0
@@ -225,16 +225,6 @@ actions:
               {{ _presence_sensors | map('states') | select('eq', 'on') | list | count > 0 }}
         sequence:
           - choose:
-              # Ambient light alone already meets/exceeds the target → turn off
-              - conditions:
-                  - condition: template
-                    value_template: "{{ current_lux >= adjusted_target_lux }}"
-                  - condition: template
-                    value_template: "{{ states(_light_target) == 'on' }}"
-                sequence:
-                  - action: light.turn_off
-                    target:
-                      entity_id: "{{ _light_target }}"
               # Calculated brightness is negligible → turn off
               - conditions:
                   - condition: template
