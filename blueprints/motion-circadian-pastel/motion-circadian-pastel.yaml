@@ -126,22 +126,50 @@ variables:
   slot_size: "{{ (day_end_min - day_start_min) / (palette | length) }}"
   colour_index: "{{ [((clamped_min - day_start_min) / slot_size) | int, (palette | length) - 1] | min }}"
   current_colour: "{{ palette[colour_index] }}"
-  # The data to send to light.turn_on, picking whichever field is actually set.
-  colour_data: >
-    {{ {'hs_color': current_colour.hs_color} if current_colour.hs_color != 'none' else {'color_temp_kelvin': current_colour.color_temp_kelvin} }}
+  # Whether this palette slot is a pastel hue or a warm/cool white.
+  use_hs: "{{ current_colour.hs_color != 'none' }}"
 
 actions:
   - choose:
       # Motion cleared: wait the configured delay, then turn the light off.
+      # The delay is not cancellable in queued mode, so re-check the sensor
+      # afterwards and abort the turn-off if motion came back meanwhile.
       - conditions:
           - condition: trigger
             id: motion_off
         sequence:
           - delay:
               minutes: !input no_motion_wait
+          - condition: state
+            entity_id: !input motion_sensor
+            state: "off"
           - action: light.turn_off
             target:
               entity_id: !input rgb_light
+
+      # Motion detected: turn the light on with the current pastel colour.
+      - conditions:
+          - condition: trigger
+            id: motion_on
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ use_hs }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input rgb_light
+                    data:
+                      brightness_pct: !input brightness_pct
+                      hs_color: "{{ current_colour.hs_color }}"
+            default:
+              - action: light.turn_on
+                target:
+                  entity_id: !input rgb_light
+                data:
+                  brightness_pct: !input brightness_pct
+                  color_temp_kelvin: "{{ current_colour.color_temp_kelvin }}"
 
       # Periodic refresh: only update colour if the light is already on.
       - conditions:
@@ -151,14 +179,19 @@ actions:
             entity_id: !input rgb_light
             state: "on"
         sequence:
-          - action: light.turn_on
-            target:
-              entity_id: !input rgb_light
-            data: "{{ colour_data }}"
-
-    # Motion detected: turn the light on with the current pastel colour.
-    default:
-      - action: light.turn_on
-        target:
-          entity_id: !input rgb_light
-        data: "{{ dict(colour_data, brightness_pct=_brightness_pct) }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ use_hs }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input rgb_light
+                    data:
+                      hs_color: "{{ current_colour.hs_color }}"
+            default:
+              - action: light.turn_on
+                target:
+                  entity_id: !input rgb_light
+                data:
+                  color_temp_kelvin: "{{ current_colour.color_temp_kelvin }}"

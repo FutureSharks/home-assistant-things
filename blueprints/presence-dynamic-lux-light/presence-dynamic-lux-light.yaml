@@ -134,6 +134,7 @@ actions:
       _presence_sensors: !input presence_sensor
       _presence_timeout: !input presence_timeout
       _target_lux: !input target_lux
+      # To calculate this value put the light on 100% in a completely dark room and check the lux sensor value
       _max_lux_output: !input max_lux_output
       _default_lux_adjustment: !input default_lux_adjustment
       # Build the per-hour adjustment map from individual inputs
@@ -224,6 +225,16 @@ actions:
               {{ _presence_sensors | map('states') | select('eq', 'on') | list | count > 0 }}
         sequence:
           - choose:
+              # Ambient light alone already meets/exceeds the target → turn off
+              - conditions:
+                  - condition: template
+                    value_template: "{{ current_lux >= adjusted_target_lux }}"
+                  - condition: template
+                    value_template: "{{ states(_light_target) == 'on' }}"
+                sequence:
+                  - action: light.turn_off
+                    target:
+                      entity_id: "{{ _light_target }}"
               # Calculated brightness is negligible → turn off
               - conditions:
                   - condition: template
