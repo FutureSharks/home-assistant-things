@@ -95,30 +95,42 @@ variables:
   day_end_min: 1200       # 20:00
   # Pastel colours to cycle through over the course of the day.
   palette:
-    - hs_color: [22, 80]
-      color_temp_kelvin: none
-    - hs_color: [10, 90]
-      color_temp_kelvin: none
+    # light pink
     - hs_color: [350, 20]
       color_temp_kelvin: none
+    # light pink/purple
     - hs_color: [300, 22]
       color_temp_kelvin: none
+    # light blue
     - hs_color: [220, 26]
       color_temp_kelvin: none
+    # blue
     - hs_color: [160, 20]
       color_temp_kelvin: none
+    # light green
     - hs_color: [80, 35]
       color_temp_kelvin: none
+    # light yellow
     - hs_color: [40, 70]
       color_temp_kelvin: none
+    # cool white
     - hs_color: none
       color_temp_kelvin: 6500
+    # neutral white
     - hs_color: none
       color_temp_kelvin: 4000
+    # warm white
     - hs_color: none
       color_temp_kelvin: 3000
+    # yellow
     - hs_color: none
       color_temp_kelvin: 2000
+    # orange
+    - hs_color: [22, 80]
+      color_temp_kelvin: none
+    # red
+    - hs_color: [10, 90]
+      color_temp_kelvin: none
 
   now_min: "{{ now().hour * 60 + now().minute }}"
   # Clamp into the day window, then map onto the palette slots.
