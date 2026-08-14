@@ -77,9 +77,13 @@ triggers:
     entity_id: !input motion_sensor
     to: "on"
     id: motion_on
+  # Fires only once the sensor has been continuously clear for the wait period.
+  # Motion returning during the wait cancels the pending trigger automatically.
   - trigger: state
     entity_id: !input motion_sensor
     to: "off"
+    for:
+      minutes: !input no_motion_wait
     id: motion_off
   - trigger: time_pattern
     minutes: !input refresh_interval
@@ -143,18 +147,11 @@ variables:
 
 actions:
   - choose:
-      # Motion cleared: wait the configured delay, then turn the light off.
-      # The delay is not cancellable in queued mode, so re-check the sensor
-      # afterwards and abort the turn-off if motion came back meanwhile.
+      # Motion has been clear for the wait period: turn the light off.
       - conditions:
           - condition: trigger
             id: motion_off
         sequence:
-          - delay:
-              minutes: !input no_motion_wait
-          - condition: state
-            entity_id: !input motion_sensor
-            state: "off"
           - action: light.turn_off
             target:
               entity_id: !input rgb_light
