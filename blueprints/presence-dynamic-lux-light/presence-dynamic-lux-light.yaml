@@ -112,7 +112,7 @@ blueprint:
     hour_23: { name: "Lux % – 23:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
 
 mode: queued
-max: 4
+max: 3
 
 triggers:
   - trigger: state
@@ -122,6 +122,8 @@ triggers:
   - trigger: state
     entity_id: !input presence_sensor
     to: "off"
+    for:
+      minutes: !input presence_timeout
     id: no_presence
   - trigger: time_pattern
     minutes: /2
@@ -174,7 +176,7 @@ actions:
       current_brightness: >
         {{ (state_attr(_light_target, 'brightness') | float(0) / 255) * 100 }}
       new_brightness: "{{ current_brightness + brightness_adjustment }}"
-      brightness: "{{ [0, [100, new_brightness] | min] | max | float }}"
+      new_brightness_clamped: "{{ [0, [100, new_brightness] | min] | max | float }}"
 
   - choose:
       # Presence detected → turn light on at calculated brightness
@@ -182,36 +184,22 @@ actions:
           - condition: trigger
             id: presence
           - condition: template
-            value_template: "{{ brightness > 1.0 }}"
+            value_template: "{{ new_brightness_clamped > 1.0 }}"
         sequence:
           - action: light.turn_on
             target:
               entity_id: "{{ _light_target }}"
             data:
-              brightness_pct: "{{ brightness }}"
+              brightness_pct: "{{ new_brightness_clamped }}"
 
-      # Presence gone → wait for timeout, then turn off if still no presence
+      # Presence gone for the full timeout → turn off if still no presence
       - conditions:
           - condition: trigger
             id: no_presence
-          - condition: template
-            value_template: >
-              {{ states(_light_target) == 'on' and
-                 _presence_sensors | map('states') | select('eq', 'on') | list | count == 0 }}
+          - condition: state
+            entity_id: "{{ _light_target }}"
+            state: "on"
         sequence:
-          # Wait for the timeout, but abort early if any sensor becomes active again
-          - wait_for_trigger:
-              - trigger: state
-                entity_id: !input presence_sensor
-                to: "on"
-            timeout:
-              seconds: "{{ _presence_timeout * 60 }}"
-            continue_on_timeout: true
-          # Only turn off if no sensor came back on during the wait
-          - condition: template
-            value_template: >
-              {{ wait.trigger is none and
-                 _presence_sensors | map('states') | select('eq', 'on') | list | count == 0 }}
           - action: light.turn_off
             target:
               entity_id: "{{ _light_target }}"
@@ -220,17 +208,15 @@ actions:
       - conditions:
           - condition: trigger
             id: periodic_check
-          - condition: template
-            value_template: >
-              {{ _presence_sensors | map('states') | select('eq', 'on') | list | count > 0 }}
         sequence:
           - choose:
               # Calculated brightness is negligible → turn off
               - conditions:
                   - condition: template
-                    value_template: "{{ brightness < 1.0 }}"
-                  - condition: template
-                    value_template: "{{ states(_light_target) == 'on' }}"
+                    value_template: "{{ new_brightness_clamped < 1.0 }}"
+                  - condition: state
+                    entity_id: "{{ _light_target }}"
+                    state: "on"
                 sequence:
                   - action: light.turn_off
                     target:
@@ -244,4 +230,4 @@ actions:
                     target:
                       entity_id: "{{ _light_target }}"
                     data:
-                      brightness_pct: "{{ brightness }}"
+                      brightness_pct: "{{ new_brightness_clamped }}"

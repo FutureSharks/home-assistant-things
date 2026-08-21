@@ -151,6 +151,9 @@ actions:
       - conditions:
           - condition: trigger
             id: motion_off
+          - condition: state
+            entity_id: !input rgb_light
+            state: "on"
         sequence:
           - action: light.turn_off
             target:
