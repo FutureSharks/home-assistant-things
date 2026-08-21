@@ -1,0 +1,28 @@
+blueprints/motion-circadian-pastel/motion-circadian-pastel.yaml
+  h_61c37ecb9a0034 154-156
+blueprints/presence-dynamic-lux-light/presence-dynamic-lux-light.yaml
+  h_61c37ecb9a0034 115,179,187,193,199-201,216-219,233
+  s_6544783959c020::t_9bdcfcca56a1fd 195
+  s_6544783959c020::t_1faea4e5db8450 125-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a48af0dad1fcd96ce555d4e2f6ce4457e2808d40",
+  "prompts": {},
+  "humans": {
+    "h_61c37ecb9a0034": {
+      "author": "Max Williams <futuresharks@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6544783959c020": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72ae08d1-673e-40cb-83eb-dfc74601a588",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Max Williams <futuresharks@gmail.com>"
+    }
+  }
+}
