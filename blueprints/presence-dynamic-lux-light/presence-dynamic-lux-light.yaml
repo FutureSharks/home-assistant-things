@@ -196,9 +196,8 @@ actions:
       - conditions:
           - condition: trigger
             id: no_presence
-          - condition: state
-            entity_id: "{{ _light_target }}"
-            state: "on"
+          - condition: template
+            value_template: "{{ is_state(_light_target, 'on') }}"
         sequence:
           - action: light.turn_off
             target:
@@ -214,9 +213,8 @@ actions:
               - conditions:
                   - condition: template
                     value_template: "{{ new_brightness_clamped < 1.0 }}"
-                  - condition: state
-                    entity_id: "{{ _light_target }}"
-                    state: "on"
+                  - condition: template
+                    value_template: "{{ is_state(_light_target, 'on') }}"
                 sequence:
                   - action: light.turn_off
                     target:
