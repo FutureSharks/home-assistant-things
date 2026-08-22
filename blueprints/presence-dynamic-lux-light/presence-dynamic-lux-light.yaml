@@ -209,7 +209,7 @@ actions:
             id: periodic_check
         sequence:
           - choose:
-              # Calculated brightness is negligible → turn off
+              # Calculated brightness is negligible or negative, like if the sun comes out and the room is bright → turn off
               - conditions:
                   - condition: template
                     value_template: "{{ new_brightness_clamped < 1.0 }}"
@@ -219,8 +219,24 @@ actions:
                   - action: light.turn_off
                     target:
                       entity_id: "{{ _light_target }}"
-              # Adjustment is significant (>5 %) → re-apply brightness
+              # If light is on and adjustment is significant (>5 %) → re-apply brightness
               - conditions:
+                  - condition: template
+                    value_template: "{{ brightness_adjustment | abs > 5.0 }}"
+                  - condition: template
+                    value_template: "{{ is_state(_light_target, 'on') }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ _light_target }}"
+                    data:
+                      brightness_pct: "{{ new_brightness_clamped }}"
+              # If there is presence but room is too dark and the light is off → turn on
+              - conditions:
+                  - condition: template
+                    value_template: "{{ _presence_sensors | map('states') | select('eq', 'on') | list | count > 0 }}"
+                  - condition: template
+                    value_template: "{{ is_state(_light_target, 'off') }}"
                   - condition: template
                     value_template: "{{ brightness_adjustment | abs > 5.0 }}"
                 sequence:
