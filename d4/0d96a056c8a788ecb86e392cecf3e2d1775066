@@ -1,0 +1,14 @@
+blueprints/motion-circadian-pastel/motion-circadian-pastel.yaml
+  h_61c37ecb9a0034 102-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d40d96a056c8a788ecb86e392cecf3e2d1775066",
+  "prompts": {},
+  "humans": {
+    "h_61c37ecb9a0034": {
+      "author": "Max Williams <futuresharks@gmail.com>"
+    }
+  }
+}
