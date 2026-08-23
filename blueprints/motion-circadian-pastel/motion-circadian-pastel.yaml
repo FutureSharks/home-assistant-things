@@ -99,6 +99,12 @@ variables:
   day_end_min: 1200       # 20:00
   # Pastel colours to cycle through over the course of the day.
   palette:
+    # red
+    - hs_color: [10, 90]
+      color_temp_kelvin: none
+    # orange
+    - hs_color: [22, 80]
+      color_temp_kelvin: none
     # light pink
     - hs_color: [350, 20]
       color_temp_kelvin: none
