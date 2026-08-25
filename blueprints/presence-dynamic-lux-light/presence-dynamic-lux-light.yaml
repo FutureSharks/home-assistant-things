@@ -15,7 +15,7 @@ blueprint:
         entity:
           domain: light
 
-    presence_sensor:
+    presence_sensors:
       name: Presence Sensor(s)
       description: >
         One or more binary sensors that trigger the light on/off.
@@ -72,20 +72,6 @@ blueprint:
           unit_of_measurement: lx
           mode: box
 
-    default_lux_adjustment:
-      name: Default Lux Adjustment
-      description: >
-        The lux target scaling (%) applied to all hours that are not listed in
-        the per-hour overrides below. 100 % means the full target lux is used;
-        lower values dim the target for that hour.
-      default: 15
-      selector:
-        number:
-          min: 0
-          max: 100
-          unit_of_measurement: "%"
-          mode: slider
-
     hour_00: { name: "Lux % – 00:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
     hour_01: { name: "Lux % – 01:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
     hour_02: { name: "Lux % – 02:00 (override)", default: 20, selector: { number: { min: 0, max: 100, unit_of_measurement: "%", mode: slider } } }
@@ -116,11 +102,11 @@ max: 3
 
 triggers:
   - trigger: state
-    entity_id: !input presence_sensor
+    entity_id: !input presence_sensors
     to: "on"
     id: presence
   - trigger: state
-    entity_id: !input presence_sensor
+    entity_id: !input presence_sensors
     to: "off"
     for:
       minutes: !input presence_timeout
@@ -133,12 +119,11 @@ actions:
   - variables:
       _light_target: !input light_target
       _light_sensor: !input light_sensor
-      _presence_sensors: !input presence_sensor
+      _presence_sensors: !input presence_sensors
       _presence_timeout: !input presence_timeout
       _target_lux: !input target_lux
       # To calculate this value put the light on 100% in a completely dark room and check the lux sensor value
       _max_lux_output: !input max_lux_output
-      _default_lux_adjustment: !input default_lux_adjustment
       # Build the per-hour adjustment map from individual inputs
       _hour_map:
         "0":  !input hour_00
@@ -166,13 +151,13 @@ actions:
         "22": !input hour_22
         "23": !input hour_23
       # Derived values
-      lux_adjustment: >
+      lux_adjustment_percentage_by_hour: >
         {% set current_hour = now().hour | string %}
-        {{ _hour_map.get(current_hour, _default_lux_adjustment) }}
-      adjusted_target_lux: "{{ _target_lux * (lux_adjustment / 100) }}"
-      current_lux: "{{ states(_light_sensor) | float(0) }}"
-      lux_deficit: "{{ adjusted_target_lux - current_lux }}"
-      brightness_adjustment: "{{ (lux_deficit / _max_lux_output) * 100 }}"
+        {{ _hour_map.get(current_hour) }}
+      target_lux_adjusted_by_hour: "{{ _target_lux * (lux_adjustment_percentage_by_hour / 100) }}"
+      current_lux_value: "{{ states(_light_sensor) | float(0) }}"
+      current_lux_desired_value: "{{ target_lux_adjusted_by_hour - current_lux_value }}"
+      brightness_adjustment: "{{ (current_lux_desired_value / _max_lux_output) * 100 }}"
       current_brightness: >
         {{ (state_attr(_light_target, 'brightness') | float(0) / 255) * 100 }}
       new_brightness: "{{ current_brightness + brightness_adjustment }}"
