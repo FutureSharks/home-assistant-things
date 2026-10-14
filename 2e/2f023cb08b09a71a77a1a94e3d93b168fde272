@@ -1,0 +1,14 @@
+blueprints/presence-dynamic-lux-light/presence-dynamic-lux-light.yaml
+  h_61c37ecb9a0034 200,221,224,227,230-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2e2f023cb08b09a71a77a1a94e3d93b168fde272",
+  "prompts": {},
+  "humans": {
+    "h_61c37ecb9a0034": {
+      "author": "Max Williams <futuresharks@gmail.com>"
+    }
+  }
+}
