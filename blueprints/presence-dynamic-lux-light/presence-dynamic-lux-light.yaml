@@ -171,6 +171,18 @@ actions:
           - condition: template
             value_template: "{{ new_brightness_clamped > 1.0 }}"
         sequence:
+          # Due to bug in Innovation Matters M2D, turn on before setting brightness
+          - if:
+              - condition: template
+                value_template: "{{ is_state(_light_target, 'off') }}"
+            then:
+              - action: light.turn_on
+                target:
+                  entity_id: "{{ _light_target }}"
+              - wait_template: "{{ is_state(_light_target, 'on') }}"
+                timeout: 5
+              - delay:
+                  milliseconds: 500
           - action: light.turn_on
             target:
               entity_id: "{{ _light_target }}"
@@ -231,6 +243,15 @@ actions:
                   - condition: template
                     value_template: "{{ new_brightness_clamped > 5.0 }}"
                 sequence:
+                  # Light is off here
+                  # Due to bug in Innovation Matters M2D, turn on before setting brightness
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ _light_target }}"
+                  - wait_template: "{{ is_state(_light_target, 'on') }}"
+                    timeout: 5
+                  - delay:
+                      milliseconds: 500
                   - action: light.turn_on
                     target:
                       entity_id: "{{ _light_target }}"
