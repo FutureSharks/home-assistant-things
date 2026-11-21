@@ -1,0 +1,26 @@
+blueprints/presence-dynamic-lux-light/presence-dynamic-lux-light.yaml
+  s_82eca56b9e5d9d::t_e94053157614c7 246,248-254
+  s_82eca56b9e5d9d::t_25de1745cd492b 175-185
+  h_61c37ecb9a0034 174,247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd8ea8dba24511dd30ff0257bedc1a26cddea9ca",
+  "prompts": {},
+  "humans": {
+    "h_61c37ecb9a0034": {
+      "author": "Max Williams <futuresharks@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_82eca56b9e5d9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "303b3e9f-b1bd-417c-889b-d5680da7c101",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Max Williams <futuresharks@gmail.com>"
+    }
+  }
+}
