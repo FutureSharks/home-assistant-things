@@ -1,0 +1,24 @@
+blueprints/motion-presence-alert/motion-presence-alert.yaml
+  s_ca8d45841ec0ce::t_579150bba3834b 1-4,9-31,34-41,48-84,96-108
+  s_ca8d45841ec0ce::t_4cbed58c6f0917 5-8,32-33,42-47,85-95
+blueprints/motion-presence-alert/README.md
+  s_ca8d45841ec0ce::t_80d33e916a5b42 1-7
+README.md
+  s_ca8d45841ec0ce::t_80d33e916a5b42 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "501b816bc22d1035a2ab2bee974de53ccdaa3caa",
+  "prompts": {},
+  "sessions": {
+    "s_ca8d45841ec0ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae3361d1-e3f0-4e44-a226-7e367bdaea86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Max Williams <futuresharks@gmail.com>"
+    }
+  }
+}
