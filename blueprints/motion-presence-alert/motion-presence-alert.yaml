@@ -29,25 +29,15 @@ blueprint:
     cooldown:
       name: Cooldown
       description: >
-        Minimum time between notifications. Set to 0 to notify on every
-        detection.
+        Minimum time between notifications, counted from the last one sent.
+        Detections during the cooldown are ignored. Set to 0 to notify on
+        every detection. The cooldown is shared by all sensors in this
+        automation; to throttle areas separately, create one automation per
+        area.
       default:
         minutes: 5
       selector:
         duration:
-
-    cooldown_per_sensor:
-      name: Cooldown per sensor
-      description: >
-        On: each sensor is throttled separately, so activity on a different
-        sensor still notifies. A sensor notifies again only once it has been
-        clear for the whole cooldown, so ongoing activity gives one
-        notification rather than one every cooldown period.
-        Off: one shared cooldown for all sensors, counted from the last
-        notification.
-      default: true
-      selector:
-        boolean:
 
     time_sensitive:
       name: Time sensitive (iOS)
@@ -56,12 +46,13 @@ blueprint:
       selector:
         boolean:
 
-mode: parallel
-max: 20
+# single: two sensors firing together can't both get past the cooldown check
+# before last_triggered updates.
+mode: single
+max_exceeded: silent
 
 variables:
   cooldown: !input cooldown
-  cooldown_per_sensor: !input cooldown_per_sensor
   time_sensitive: !input time_sensitive
   cooldown_seconds: >
     {{ (cooldown.days | default(0)) * 86400
@@ -80,19 +71,12 @@ triggers:
     to: "on"
 
 conditions:
+  # last_triggered only updates when the actions run, so detections ignored
+  # during the cooldown don't extend it. It also survives restarts.
   - condition: template
-    value_template: >
-      {% if cooldown_per_sensor %}
-        {# The sensor was clear since from_state.last_changed. Requiring it to
-           have been clear for the whole cooldown means it can't notify twice
-           within one cooldown period. #}
-        {{ (trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() >= cooldown_seconds }}
-      {% else %}
-        {# last_triggered only updates when the actions run, so detections
-           ignored during the cooldown don't extend it. #}
-        {{ this.attributes.last_triggered is none
-           or (now() - this.attributes.last_triggered).total_seconds() >= cooldown_seconds }}
-      {% endif %}
+    value_template: >-
+      {{ this.attributes.last_triggered is none
+         or (now() - this.attributes.last_triggered).total_seconds() >= cooldown_seconds }}
 
 actions:
   - domain: mobile_app

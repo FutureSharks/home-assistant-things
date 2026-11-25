@@ -1,6 +1,6 @@
 # Motion / Presence Alert
 
-Sends a Home Assistant Companion app notification when any of the chosen motion, occupancy or presence sensors turns on, with a configurable cooldown to throttle notifications. The cooldown can be shared across all sensors or applied per sensor.
+Sends a Home Assistant Companion app notification when any of the chosen motion, occupancy or presence sensors turns on, with a configurable cooldown to throttle notifications. The cooldown is shared by all sensors in one automation; create one automation per area to throttle areas separately.
 
 Works with any binary sensor, including Reolink person, vehicle, animal and motion detection.
 

@@ -1,24 +1,24 @@
 blueprint:
-  name: Reolink Offline Alert
+  name: Device Offline Alert
   description: >
-    Sends a notification to the Home Assistant Companion app when a Reolink
-    camera goes offline, and optionally when it comes back. Home Assistant
-    marks a camera's entities as unavailable when it can't reach it, so pick
-    one entity per camera (for example its main stream camera entity or a
-    sensor). Picking several entities from the same camera gives duplicate
-    alerts.
+    Sends a notification to the Home Assistant Companion app when a device
+    goes offline, and optionally when it comes back. Works with any
+    integration that marks a device's entities as unavailable when Home
+    Assistant can't reach it (Reolink, Zigbee, Z-Wave, Wi-Fi devices and most
+    others). Pick one entity per device; picking several entities from the
+    same device gives duplicate alerts.
   domain: automation
   author: max.williams
-  source_url: https://github.com/FutureSharks/home-assistant-things/blob/main/blueprints/reolink-offline-alert/reolink-offline-alert.yaml
+  source_url: https://github.com/FutureSharks/home-assistant-things/blob/main/blueprints/device-offline-alert/device-offline-alert.yaml
   input:
-    camera_entities:
-      name: Camera entities
-      description: One entity from each Reolink camera to watch.
+    entities:
+      name: Entities
+      description: >
+        One entity from each device to watch, for example a camera stream,
+        a sensor or a switch. Avoid entities that are disabled.
       selector:
         entity:
           multiple: true
-          filter:
-            - integration: reolink
 
     notify_device:
       name: Phone
@@ -30,7 +30,7 @@ blueprint:
     offline_for:
       name: Offline for
       description: >
-        How long a camera must be unreachable before alerting. Avoids alerts
+        How long a device must be unreachable before alerting. Avoids alerts
         for short network blips and Home Assistant restarts.
       default:
         minutes: 5
@@ -39,7 +39,7 @@ blueprint:
 
     notify_back_online:
       name: Notify when back online
-      description: Also send a notification when a camera that triggered an alert recovers.
+      description: Also send a notification when a device that triggered an alert recovers.
       default: true
       selector:
         boolean:
@@ -63,7 +63,7 @@ variables:
        + (offline_for.hours | default(0)) * 3600
        + (offline_for.minutes | default(0)) * 60
        + (offline_for.seconds | default(0)) }}
-  camera_name: >
+  device_name: >
     {{ device_attr(device_id(trigger.entity_id), 'name_by_user')
        or device_attr(device_id(trigger.entity_id), 'name')
        or state_attr(trigger.entity_id, 'friendly_name')
@@ -73,12 +73,12 @@ variables:
 triggers:
   - trigger: state
     id: offline
-    entity_id: !input camera_entities
+    entity_id: !input entities
     to: unavailable
     for: !input offline_for
   - trigger: state
     id: online
-    entity_id: !input camera_entities
+    entity_id: !input entities
     from: unavailable
 
 conditions:
@@ -104,21 +104,21 @@ actions:
           - domain: mobile_app
             type: notify
             device_id: !input notify_device
-            title: "📷 {{ camera_name }} offline"
+            title: "⚠️ {{ device_name }} offline"
             message: >
-              {{ camera_name }} has been unreachable since
+              {{ device_name }} has been unreachable since
               {{ as_local(trigger.to_state.last_changed).strftime('%H:%M') }}.
             data:
-              tag: "reolink-offline-{{ trigger.entity_id }}"
+              tag: "device-offline-{{ trigger.entity_id }}"
               push:
                 interruption-level: "{{ interruption_level }}"
     default:
       - domain: mobile_app
         type: notify
         device_id: !input notify_device
-        title: "📷 {{ camera_name }} back online"
+        title: "✅ {{ device_name }} back online"
         message: >
-          {{ camera_name }} is reachable again after
+          {{ device_name }} is reachable again after
           {{ ((trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() / 60) | round(0) | int }} min.
         data:
-          tag: "reolink-offline-{{ trigger.entity_id }}"
+          tag: "device-offline-{{ trigger.entity_id }}"
