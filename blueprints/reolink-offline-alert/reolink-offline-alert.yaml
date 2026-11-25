@@ -1,0 +1,124 @@
+blueprint:
+  name: Reolink Offline Alert
+  description: >
+    Sends a notification to the Home Assistant Companion app when a Reolink
+    camera goes offline, and optionally when it comes back. Home Assistant
+    marks a camera's entities as unavailable when it can't reach it, so pick
+    one entity per camera (for example its main stream camera entity or a
+    sensor). Picking several entities from the same camera gives duplicate
+    alerts.
+  domain: automation
+  author: max.williams
+  source_url: https://github.com/FutureSharks/home-assistant-things/blob/main/blueprints/reolink-offline-alert/reolink-offline-alert.yaml
+  input:
+    camera_entities:
+      name: Camera entities
+      description: One entity from each Reolink camera to watch.
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - integration: reolink
+
+    notify_device:
+      name: Phone
+      description: The Companion app device to notify.
+      selector:
+        device:
+          integration: mobile_app
+
+    offline_for:
+      name: Offline for
+      description: >
+        How long a camera must be unreachable before alerting. Avoids alerts
+        for short network blips and Home Assistant restarts.
+      default:
+        minutes: 5
+      selector:
+        duration:
+
+    notify_back_online:
+      name: Notify when back online
+      description: Also send a notification when a camera that triggered an alert recovers.
+      default: true
+      selector:
+        boolean:
+
+    time_sensitive:
+      name: Time sensitive (iOS)
+      description: Lets the notification break through Focus modes.
+      default: true
+      selector:
+        boolean:
+
+mode: queued
+max: 10
+
+variables:
+  offline_for: !input offline_for
+  notify_back_online: !input notify_back_online
+  time_sensitive: !input time_sensitive
+  offline_seconds: >
+    {{ (offline_for.days | default(0)) * 86400
+       + (offline_for.hours | default(0)) * 3600
+       + (offline_for.minutes | default(0)) * 60
+       + (offline_for.seconds | default(0)) }}
+  camera_name: >
+    {{ device_attr(device_id(trigger.entity_id), 'name_by_user')
+       or device_attr(device_id(trigger.entity_id), 'name')
+       or state_attr(trigger.entity_id, 'friendly_name')
+       or trigger.entity_id }}
+  interruption_level: "{{ 'time-sensitive' if time_sensitive else 'active' }}"
+
+triggers:
+  - trigger: state
+    id: offline
+    entity_id: !input camera_entities
+    to: unavailable
+    for: !input offline_for
+  - trigger: state
+    id: online
+    entity_id: !input camera_entities
+    from: unavailable
+
+conditions:
+  - condition: or
+    conditions:
+      - condition: trigger
+        id: offline
+      # Only report recovery if the outage lasted long enough to have been
+      # alerted on. This also skips the brief unavailable state at startup.
+      - condition: template
+        value_template: >
+          {{ trigger.id == 'online'
+             and notify_back_online
+             and trigger.to_state.state not in ['unavailable', 'unknown']
+             and (trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() >= offline_seconds }}
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: offline
+        sequence:
+          - domain: mobile_app
+            type: notify
+            device_id: !input notify_device
+            title: "📷 {{ camera_name }} offline"
+            message: >
+              {{ camera_name }} has been unreachable since
+              {{ as_local(trigger.to_state.last_changed).strftime('%H:%M') }}.
+            data:
+              tag: "reolink-offline-{{ trigger.entity_id }}"
+              push:
+                interruption-level: "{{ interruption_level }}"
+    default:
+      - domain: mobile_app
+        type: notify
+        device_id: !input notify_device
+        title: "📷 {{ camera_name }} back online"
+        message: >
+          {{ camera_name }} is reachable again after
+          {{ ((trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() / 60) | round(0) | int }} min.
+        data:
+          tag: "reolink-offline-{{ trigger.entity_id }}"
