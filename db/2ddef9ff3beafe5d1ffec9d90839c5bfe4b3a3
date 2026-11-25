@@ -1,0 +1,23 @@
+README.md
+  s_ca8d45841ec0ce::t_6868f11562b984 11
+blueprints/reolink-offline-alert/README.md
+  s_ca8d45841ec0ce::t_49e1a894668110 1-7
+blueprints/reolink-offline-alert/reolink-offline-alert.yaml
+  s_ca8d45841ec0ce::t_49e1a894668110 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db2ddef9ff3beafe5d1ffec9d90839c5bfe4b3a3",
+  "prompts": {},
+  "sessions": {
+    "s_ca8d45841ec0ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae3361d1-e3f0-4e44-a226-7e367bdaea86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Max Williams <futuresharks@gmail.com>"
+    }
+  }
+}
