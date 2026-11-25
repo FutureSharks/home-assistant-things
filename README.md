@@ -9,3 +9,4 @@ A collection of things I use in Home Assistant
 3. [rgb-air-quality-monitor](blueprints/rgb-air-quality-monitor): Periodically reads CO₂, VOC, and NOx sensors, mapping values to an RGB light
 4. [motion-circadian-pastel](blueprints/motion-circadian-pastel): Turns a light on with motion and off when clear, cycling through 12 pastel colours and warm whites that track the time of day
 5. [reolink-offline-alert](blueprints/reolink-offline-alert): Sends a Companion app notification when a Reolink camera goes offline or comes back
+6. [motion-presence-alert](blueprints/motion-presence-alert): Sends a Companion app notification when motion or presence is detected, with a cooldown to throttle notifications

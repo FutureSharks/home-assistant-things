@@ -1,0 +1,108 @@
+blueprint:
+  name: Motion / Presence Alert
+  description: >
+    Sends a notification to the Home Assistant Companion app when any of the
+    chosen motion, occupancy or presence sensors detects something, with a
+    cooldown so a busy sensor doesn't flood your phone. Works with Reolink
+    person, vehicle, animal and motion sensors as well as any other binary
+    sensor.
+  domain: automation
+  author: max.williams
+  source_url: https://github.com/FutureSharks/home-assistant-things/blob/main/blueprints/motion-presence-alert/motion-presence-alert.yaml
+  input:
+    sensors:
+      name: Sensors
+      description: Binary sensors that should trigger a notification when they turn on.
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: binary_sensor
+
+    notify_device:
+      name: Phone
+      description: The Companion app device to notify.
+      selector:
+        device:
+          integration: mobile_app
+
+    cooldown:
+      name: Cooldown
+      description: >
+        Minimum time between notifications. Set to 0 to notify on every
+        detection.
+      default:
+        minutes: 5
+      selector:
+        duration:
+
+    cooldown_per_sensor:
+      name: Cooldown per sensor
+      description: >
+        On: each sensor is throttled separately, so activity on a different
+        sensor still notifies. A sensor notifies again only once it has been
+        clear for the whole cooldown, so ongoing activity gives one
+        notification rather than one every cooldown period.
+        Off: one shared cooldown for all sensors, counted from the last
+        notification.
+      default: true
+      selector:
+        boolean:
+
+    time_sensitive:
+      name: Time sensitive (iOS)
+      description: Lets the notification break through Focus modes.
+      default: false
+      selector:
+        boolean:
+
+mode: parallel
+max: 20
+
+variables:
+  cooldown: !input cooldown
+  cooldown_per_sensor: !input cooldown_per_sensor
+  time_sensitive: !input time_sensitive
+  cooldown_seconds: >
+    {{ (cooldown.days | default(0)) * 86400
+       + (cooldown.hours | default(0)) * 3600
+       + (cooldown.minutes | default(0)) * 60
+       + (cooldown.seconds | default(0)) }}
+  sensor_name: >
+    {{ state_attr(trigger.entity_id, 'friendly_name') or trigger.entity_id }}
+  area: "{{ area_name(trigger.entity_id) or '' }}"
+  interruption_level: "{{ 'time-sensitive' if time_sensitive else 'active' }}"
+
+triggers:
+  - trigger: state
+    entity_id: !input sensors
+    from: "off"
+    to: "on"
+
+conditions:
+  - condition: template
+    value_template: >
+      {% if cooldown_per_sensor %}
+        {# The sensor was clear since from_state.last_changed. Requiring it to
+           have been clear for the whole cooldown means it can't notify twice
+           within one cooldown period. #}
+        {{ (trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() >= cooldown_seconds }}
+      {% else %}
+        {# last_triggered only updates when the actions run, so detections
+           ignored during the cooldown don't extend it. #}
+        {{ this.attributes.last_triggered is none
+           or (now() - this.attributes.last_triggered).total_seconds() >= cooldown_seconds }}
+      {% endif %}
+
+actions:
+  - domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: "🚶 {{ sensor_name }}"
+    message: >
+      Detected{{ ' in ' ~ area if area }} at {{ now().strftime('%H:%M') }}.
+    data:
+      group: motion-presence-alert
+      tag: "motion-{{ trigger.entity_id }}"
+      push:
+        interruption-level: "{{ interruption_level }}"
